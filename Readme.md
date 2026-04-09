@@ -1,57 +1,58 @@
-> *Материал представлен исключительно для научных целей.* 
+
+---
+
 # 🚀 VLESS/Reality Multi-Parser for OpenWrt & Clash
-Скрипт для автоматического сбора VLESS-ссылок (включая Reality) из удаленных текстовых файлов и их преобразования в формат YAML для использования в proxy-providers (Clash/Mihomo).
 
-### 🛠 Возможности
-Поддержка Reality: Полный парсинг public-key, short-id, flow и fingerprint.
+*Материал представлен исключительно для научных целей.*
 
-Обработка нескольких источников одновременно.
-Генерация отдельных файлов для разных групп прокси.
-Идеально подходит для связки сервер-парсер + роутер-клиент.
+Скрипт для автоматического сбора, проверки и структурирования VLESS/Reality ссылок из открытых источников. Преобразует сырые ссылки в YAML-файлы, готовые для использования в качестве **proxy-providers** в Clash (Mihomo/Meta).
+
+### 🛠 Ключевые возможности
+* **Reality-First**: Скрипт приоритизирует Reality-ноды, заполняя их в начало списка.
+* **TCP Alive Check**: Встроенная проверка доступности порта (`socket`), что исключает совсем "мертвые" IP.
+* **SNI Filtering**: Автоматический пропуск конфигов с забаненными или мусорными доменами (google, facebook и др.).
+* **Smart Parsing**: Корректная обработка `pbk`, `sid`, `flow`, а также поддержка `gRPC` и `WebSocket` (с заголовками).
+* **Emoji-Friendly**: Очистка имен прокси от мусорных символов с сохранением читаемости.
 
 ### 📋 Требования
-Python 3.10+
-Пакеты: python3-requests, python3-yaml
+* Python 3.10+
+* Библиотеки: `pip install pyyaml requests`
 
+### ⚙️ Настройка (update_proxies.py)
+```python
+# Лимит прокси на один файл
+MAX_PROXIES = 80 
 
-### 📂 Структура проекта
-```Plaintext
-.
-├── update_proxies.py     # Сам скрипт-парсер
-├── proxies_out/          # Папка с готовыми YAML (создается автоматически)
-│   ├── my_vless_list.yml
-│   └── finland_nodes.yml
-└── README.md             # Эта инструкция
-```
-### ⚙️ Настройка
-```Python
-#СЛОВАРЬ ИСТОЧНИКОВ: "название_файла": "ссылка"СЛОВАРЬ ИСТОЧНИКОВ: "название_файла": "ссылка"
+# Источники: можно задавать список ссылок и включать/выключать фильтрацию для группы
 SOURCES = {
-    "my_vless_list": "https://raw.githubusercontent.com/.../links.txt",
-    "finland_nodes": "https://provider.com/nodes.txt"
+    "my_list": {
+        "links": ["https://site.com/links.txt"],
+        "filter": True 
+    }
 }
-# Папка, куда будут падать конфиги
-OUTPUT_DIR = "./proxies_out"
 ```
-### 🚀 Запуск
-Ручной запуск:
-```Bash
-python3 update_proxies.py
-```
-В папке с конфигами:
-```Bash
-python3 -m http.server 8080
-```
->Теперь файлы доступны по адресу: http://<IP_СЕРВЕРА>/my_vless_list.yml
 
-### 🛡 Пример конфигурации в Clash (OpenWrt)
-```YAML
+### 🚀 Использование
+1.  **Запуск парсера**:
+    ```bash
+    python3 update_proxies.py
+    ```
+2.  **Раздача файлов** (опционально):
+    ```bash
+    cd proxies_out && python3 -m http.server 8080
+    ```
+    Теперь ваши конфиги доступны по адресу `http://<IP_СЕРВЕРА>:8080/my_list.yml`
+
+### 🛡 Интеграция в Clash (OpenWrt)
+Добавьте этот блок в ваш конфиг Clash для автоматического подтягивания нод:
+
+```yaml
 proxy-providers:
-  vless-remote:
+  vless-auto:
     type: http
-    url: "http://<IP_СЕРВЕРА>/my_vless_list.yml"
+    url: "http://<IP_СЕРВЕРА>:8080/my_list.yml"
     interval: 3600
-    path: ./proxies/vless-remote.yaml
+    path: ./proxies/vless-auto.yaml
     health-check:
       enable: true
       interval: 600
